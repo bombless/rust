@@ -812,7 +812,7 @@ impl NonCamelCaseTypes {
                 if i == 0 {
                     c.to_uppercase()
                 } else {
-                    c
+                    c.to_lowercase()
                 }
             )).collect()
         }

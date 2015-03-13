@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,13 @@
 
 #![forbid(non_camel_case_types)]
 #![allow(dead_code)]
+
+type I_32 = i32; //~ ERROR type `I_32` should have a camel case name such as `I32`
+
+type I_SIZE = isize; //~ ERROR type `I_SIZE` should have a camel case name such as `ISize`
+
+struct ONE_TWO_THREE;
+//~^ ERROR type `ONE_TWO_THREE` should have a camel case name such as `OneTwoThree`
 
 struct foo { //~ ERROR type `foo` should have a camel case name such as `Foo`
     bar: isize,
