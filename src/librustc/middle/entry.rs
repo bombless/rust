@@ -14,10 +14,13 @@ use middle::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
+use syntax::ptr::P;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
-use rustc_front::hir::{Item, ItemFn};
+use rustc_front::hir::{Item, ItemFn, ItemUse};
+use rustc_front::hir::ViewPath_::ViewPathSimple;
 use rustc_front::intravisit::Visitor;
+use std::ops::Deref;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
@@ -80,6 +83,17 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
 // them in sync.
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
+        ItemUse(ref ptr) if at_root => {
+            if let ViewPathSimple(ref name, _) = ptr.deref().node {
+                if name.as_str() == "main" {
+                    EntryPointType::MainNamed
+                } else {
+                    EntryPointType::None
+                }                
+            } else {
+                EntryPointType::None
+            }
+        }
         ItemFn(..) => {
             if attr::contains_name(&item.attrs, "start") {
                 EntryPointType::Start
@@ -102,6 +116,12 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
 
 
 fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
+    //if item.name.as_str() == "bar" || item.name.as_str() == "main" {
+        
+    //}
+    
+    write(&item.name.as_str()[..]);
+    write(&format!("{:?}", item));
     match entry_point_type(item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
@@ -133,7 +153,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
         EntryPointType::None => ()
     }
 }
-
+fn write(s: &str) {
+    use ::std::io::prelude::*;
+    use ::std::fs::OpenOptions;
+    let file = OpenOptions::new().write(true).append(true).open("\\a.txt");
+    let s = format!("{}\n", s);
+    file.unwrap().write_all(s.as_bytes()).unwrap()
+}
 fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
         *this.session.entry_fn.borrow_mut() = this.start_fn;
