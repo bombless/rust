@@ -17,8 +17,10 @@ use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax_pos::Span;
-use hir::{Item, ItemFn};
+use hir::{Item, ItemFn, ItemUse};
 use hir::intravisit::Visitor;
+use hir::ViewPath_::*;
+use hir::ViewPath_;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
@@ -27,6 +29,9 @@ struct EntryContext<'a, 'tcx: 'a> {
 
     // The top-level function called 'main'
     main_fn: Option<(NodeId, Span)>,
+
+    // Imported function named 'main'
+    imported_main_fn: Option<(NodeId, Span)>,
 
     // The function that has attribute named 'main'
     attr_main_fn: Option<(NodeId, Span)>,
@@ -69,6 +74,7 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
         session: session,
         map: ast_map,
         main_fn: None,
+        imported_main_fn: None,
         attr_main_fn: None,
         start_fn: None,
         non_main_fns: Vec::new(),
@@ -99,10 +105,26 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::None
             }
         }
+        ItemUse(ref vp) if imported_as_main(&vp.node) => { println!("{:?}", item); EntryPointType::ImportedMain },
         _ => EntryPointType::None,
     }
 }
 
+fn imported_as_main(vp: &ViewPath_) -> bool {
+    match *vp {
+        ViewPathSimple(ref n, _) => n.as_str() == "main",
+        ViewPathGlob(_) => false,
+        ViewPathList(_, ref v) => {
+            for item in v {
+                
+                if item.node.rename.map_or(false, |x| x.as_str() == "main") {
+                    return true
+                }
+            }
+            false
+        }
+    }
+}
 
 fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
     match entry_point_type(item, at_root) {
@@ -140,6 +162,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
                     .span_label(item.span, &format!("multiple `start` functions"))
                     .emit();
             }
+        },
+        EntryPointType::ImportedMain => {
+            ctxt.imported_main_fn = Some((item.id, item.span));
         },
         EntryPointType::None => ()
     }

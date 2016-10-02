@@ -212,7 +212,7 @@ impl fold::Folder for EntryPointCleaner {
                         span: span
                     }
                 }),
-            EntryPointType::None |
+            EntryPointType::None | EntryPointType::ImportedMain |
             EntryPointType::OtherMain => folded,
         };
 

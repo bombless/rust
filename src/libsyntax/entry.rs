@@ -16,6 +16,7 @@ pub enum EntryPointType {
     MainNamed,
     MainAttr,
     Start,
+    ImportedMain,
     OtherMain, // Not an entry point, but some other function named main
 }
 
