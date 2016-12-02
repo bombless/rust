@@ -234,6 +234,7 @@ impl PpSourceMode {
                                                                  resolutions.clone(),
                                                                  arenas,
                                                                  id,
+                                                                 Vec::new(),
                                                                  |tcx, _, _, _, _| {
                     let annotation = TypedAnnotation {
                         tcx: tcx,
@@ -952,6 +953,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      resolutions.clone(),
                                                      arenas,
                                                      crate_name,
+                                                     Vec::new(),
                                                      |tcx, mir_map, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {

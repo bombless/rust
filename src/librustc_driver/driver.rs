@@ -11,6 +11,7 @@
 use rustc::hir;
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
 use rustc::hir::def::DefMap;
+use rustc::hir::def_id::DefId;
 use rustc::hir::lowering::lower_crate;
 use rustc_mir as mir;
 use rustc::mir::mir_map::MirMap;
@@ -117,7 +118,7 @@ pub fn compile_input(sess: &Session,
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name = link::find_crate_name(Some(sess), &krate.attrs, input);
-        let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
+        let ExpansionResult { expanded_crate, defs, analysis, resolutions, defined_as_main, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
                 |expanded_crate| {
@@ -175,6 +176,7 @@ pub fn compile_input(sess: &Session,
                                     resolutions,
                                     &arenas,
                                     &crate_name,
+                                    defined_as_main,
                                     |tcx, mir_map, analysis, incremental_hashes_map, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -545,6 +547,7 @@ pub struct ExpansionResult<'a> {
     pub analysis: ty::CrateAnalysis<'a>,
     pub resolutions: Resolutions,
     pub hir_forest: hir_map::Forest,
+    pub defined_as_main: Vec<DefId>,
 }
 
 /// Run the "early phases" of the compiler: initial `cfg` processing,
@@ -778,6 +781,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             name: crate_name,
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
+        defined_as_main: resolver.defined_as_main,
         resolutions: Resolutions {
             def_map: resolver.def_map,
             freevars: resolver.freevars,
@@ -797,6 +801,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                resolutions: Resolutions,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
+                                               defined_as_main: Vec<DefId> ,
                                                f: F)
                                                -> Result<R, usize>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
@@ -833,7 +838,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &hir_map));
+         || middle::entry::find_entry_point(sess, &hir_map, defined_as_main));
 
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)

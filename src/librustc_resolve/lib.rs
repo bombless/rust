@@ -1086,6 +1086,8 @@ pub struct Resolver<'a> {
 
     // Maps the `Mark` of an expansion to its containing module or block.
     expansion_data: FnvHashMap<u32, macros::ExpansionData<'a>>,
+
+    pub defined_as_main: Vec<DefId>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1263,6 +1265,7 @@ impl<'a> Resolver<'a> {
             crate_loader: crate_loader,
             macro_names: FnvHashSet(),
             expansion_data: expansion_data,
+            defined_as_main: Vec::new(),
         }
     }
 

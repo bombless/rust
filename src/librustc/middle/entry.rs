@@ -11,7 +11,7 @@
 
 use dep_graph::DepNode;
 use hir::map as ast_map;
-use hir::def_id::{CRATE_DEF_INDEX};
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
@@ -41,7 +41,10 @@ struct EntryContext<'a, 'tcx: 'a> {
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
-    non_main_fns: Vec<(NodeId, Span)> ,
+    non_main_fns: Vec<(NodeId, Span)>,
+
+    // Imported as main
+    defined_as_main: Vec<DefId>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for EntryContext<'a, 'tcx> {
@@ -53,7 +56,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
+pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map, defined_as_main: Vec<DefId>) {
     let _task = ast_map.dep_graph.in_task(DepNode::EntryPoint);
 
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
@@ -70,6 +73,8 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
         return
     }
 
+    println!("found {} items", defined_as_main.len());
+
     let mut ctxt = EntryContext {
         session: session,
         map: ast_map,
@@ -78,6 +83,7 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
         attr_main_fn: None,
         start_fn: None,
         non_main_fns: Vec::new(),
+        defined_as_main: defined_as_main,
     };
 
     ast_map.krate().visit_all_items(&mut ctxt);
@@ -87,7 +93,7 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
 
 // Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
 // them in sync.
-fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
+fn entry_point_type<F: Fn()->bool>(item: &Item, at_root: bool, defined_as_main: F) -> EntryPointType {
     match item.node {
         ItemFn(..) => {
             if attr::contains_name(&item.attrs, "start") {
@@ -98,9 +104,13 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 if at_root {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed
+                } else if defined_as_main() {
+                    EntryPointType::ImportedMain
                 } else {
                     EntryPointType::OtherMain
                 }
+            } else if defined_as_main() {
+                EntryPointType::ImportedMain
             } else {
                 EntryPointType::None
             }
@@ -127,7 +137,7 @@ fn imported_as_main(vp: &ViewPath_) -> bool {
 }
 
 fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
-    match entry_point_type(item, at_root) {
+    match entry_point_type(item, at_root, || ctxt.defined_as_main.contains(&ctxt.map.local_def_id(item.id))) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.id, item.span));
@@ -179,6 +189,9 @@ fn configure_main(this: &mut EntryContext) {
         this.session.entry_type.set(Some(config::EntryMain));
     } else if this.main_fn.is_some() {
         *this.session.entry_fn.borrow_mut() = this.main_fn;
+        this.session.entry_type.set(Some(config::EntryMain));
+    } else if this.imported_main_fn.is_some() {
+        *this.session.entry_fn.borrow_mut() = this.imported_main_fn;
         this.session.entry_type.set(Some(config::EntryMain));
     } else {
         // No main function

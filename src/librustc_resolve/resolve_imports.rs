@@ -322,6 +322,11 @@ impl<'a> Resolver<'a> {
         where T: ToNameBinding<'a>
     {
         let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
+        if ns == ValueNS && module.parent.is_none() && name.as_str() == "main" {
+            if let Def::Fn(def_id) = binding.def() {
+                self.defined_as_main.push(def_id)
+            }                
+        }
         self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {

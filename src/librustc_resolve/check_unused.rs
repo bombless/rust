@@ -62,7 +62,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
             self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
                                   id,
                                   span,
-                                  "unused import".to_string());
+                                  "unused import :)".to_string());
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
