@@ -78,6 +78,7 @@ pub mod dep_graph;
 pub mod hir;
 pub mod infer;
 pub mod lint;
+pub mod test;
 
 pub mod middle {
     pub mod astconv_util;

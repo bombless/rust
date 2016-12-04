@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
+use rustc::{self, hir};
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
 use rustc::hir::lowering::lower_crate;
 use rustc_data_structures::blake2b::Blake2bHasher;
@@ -693,7 +693,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());
 
     krate = time(time_passes, "maybe building test harness", || {
-        syntax::test::modify_for_testing(&sess.parse_sess,
+        rustc::test::modify_for_testing(&sess.parse_sess,
                                          &mut resolver,
                                          sess.opts.test,
                                          krate,

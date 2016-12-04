@@ -13,33 +13,35 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+extern crate syntax_pos;
+
 use self::HasTestSignature::*;
 
 use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr::{self, HasAttrs};
-use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
+use syntax::attr::{self, HasAttrs};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 
-use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
-use errors;
-use errors::snippet::{SnippetData};
-use config;
-use entry::{self, EntryPointType};
-use ext::base::{ExtCtxt, Resolver};
-use ext::build::AstBuilder;
-use ext::expand::ExpansionConfig;
-use fold::Folder;
-use util::move_map::MoveMap;
-use fold;
-use parse::{token, ParseSess};
-use print::pprust;
-use ast::{self, Ident};
-use ptr::P;
-use symbol::{self, Symbol, keywords};
-use util::small_vector::SmallVector;
+use syntax::codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
+use syntax::errors;
+use syntax::errors::snippet::{SnippetData};
+use syntax::config;
+use syntax::entry::{self, EntryPointType};
+use syntax::ext::base::{ExtCtxt, Resolver};
+use syntax::ext::build::AstBuilder;
+use syntax::ext::expand::ExpansionConfig;
+use syntax::fold::Folder;
+use syntax::util::move_map::MoveMap;
+use syntax::{fold, abi};
+use syntax::parse::{token, ParseSess};
+use syntax::print::pprust;
+use syntax::ast::{self, Ident};
+use syntax::ptr::P;
+use syntax::symbol::{self, Symbol, keywords};
+use syntax::util::small_vector::SmallVector;
 
 enum ShouldPanic {
     No,
@@ -509,7 +511,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
                            dummy_spanned(ast::Constness::NotConst),
-                           ::abi::Abi::Rust, ast::Generics::default(), main_body);
+                           abi::Abi::Rust, ast::Generics::default(), main_body);
     let main = P(ast::Item {
         ident: Ident::from_str("main"),
         attrs: vec![main_attr],
