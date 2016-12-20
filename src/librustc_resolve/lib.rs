@@ -1116,9 +1116,9 @@ pub struct Resolver<'a> {
     name_already_seen: FxHashMap<Name, Span>,
 
     // Track function imported as main in root namespace
-    pub defined_as_main: Option<DefId>,
+    pub defined_as_main: Vec<DefId>,
 
-    main_directive_id: Option<NodeId>,
+    main_directive_id: Vec<NodeId>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1294,8 +1294,8 @@ impl<'a> Resolver<'a> {
             macro_exports: Vec::new(),
             invocations: invocations,
             name_already_seen: FxHashMap(),
-            defined_as_main: None,
-            main_directive_id: None,
+            defined_as_main: Vec::new(),
+            main_directive_id: Vec::new(),
         }
     }
 

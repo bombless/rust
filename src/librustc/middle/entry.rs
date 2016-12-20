@@ -16,6 +16,7 @@ use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
+use syntax::feature_gate::{self, emit_feature_err};
 use syntax_pos::Span;
 use hir::{Item, ItemFn, ImplItem};
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -40,7 +41,7 @@ struct EntryContext<'a, 'tcx: 'a> {
 
     // Function item that imported to root namespace named 'main'.
     // It was collected in resolve phase
-    defined_as_main: Option<DefId>,
+    defined_as_main: Vec<DefId>,
 
     // The function that imported to root namespace named 'main'.
     imported_main_fn: Option<(NodeId, Span)>,
@@ -60,7 +61,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map, defined_as_main: Option<DefId>) {
+pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map, defined_as_main: Vec<DefId>) {
     let _task = ast_map.dep_graph.in_task(DepNode::EntryPoint);
 
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
@@ -123,7 +124,7 @@ fn entry_point_type<F: Fn() -> bool>(item: &Item, at_root: bool, defined_as_main
 fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
     match entry_point_type(item,
                            at_root,
-                           || ctxt.defined_as_main == Some(ctxt.map.local_def_id(item.id))) {
+                           || ctxt.defined_as_main.contains(&ctxt.map.local_def_id(item.id))) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.id, item.span));
@@ -161,6 +162,11 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
         },
         EntryPointType::ImportedMain => {
             ctxt.imported_main_fn = Some((item.id, item.span));
+            if !ctxt.session.features.borrow().main_reexport {
+                let msg = "main re-export is experimentally supported";
+                emit_feature_err(&ctxt.session.parse_sess, "main_reexport", item.span,
+                                 feature_gate::GateIssue::Language, msg);
+            }
         },
         EntryPointType::None => ()
     }

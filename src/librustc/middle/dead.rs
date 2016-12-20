@@ -418,7 +418,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
-    defined_as_main: Option<DefId>,
+    defined_as_main: Vec<DefId>,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
@@ -517,7 +517,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if self.should_warn_about_item(item) &&
-            self.defined_as_main.map_or(true, |x| x != self.tcx.map.local_def_id(item.id)) {
+            self.defined_as_main.contains(&self.tcx.map.local_def_id(item.id)) {
             self.warn_dead_code(
                 item.id,
                 item.span,
@@ -596,7 +596,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              access_levels: &privacy::AccessLevels,
-                             defined_as_main: Option<DefId>) {
+                             defined_as_main: Vec<DefId>) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
     let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, access_levels, krate);

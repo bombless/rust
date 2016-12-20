@@ -314,6 +314,9 @@ declare_features! (
 
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
+
+    // Allow a re-export for `main`
+    (active, main_reexport, "1.15.0", Some(28937)),
 );
 
 declare_features! (

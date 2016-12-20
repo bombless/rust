@@ -301,15 +301,20 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    pub fn try_define<T>(&mut self, directive_id: Option<NodeId>, module: Module<'a>, name: Name, ns: Namespace, binding: T)
+    pub fn try_define<T>(&mut self, directive_id: Option<NodeId>, module: Module<'a>, name: Name,
+                         ns: Namespace, binding: T)
                          -> Result<(), &'a NameBinding<'a>>
         where T: ToNameBinding<'a>
     {
         let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
-        if ns == ValueNS && module.parent.is_none() && name == Name::intern("main") {
+        if directive_id.is_some() && ns == ValueNS && module.parent.is_none() &&
+           name == Name::intern("main") {
             if let Def::Fn(def_id) = binding.def() {
-                self.defined_as_main = Some(def_id);
-                self.main_directive_id = directive_id;
+                self.defined_as_main.push(def_id);
+                if let Some(id) = directive_id {
+                    self.main_directive_id.push(id);
+                }
+                println!("def_id {:?} directive_id {:?}", def_id, directive_id);
             }
         }
         self.update_resolution(module, name, ns, |this, resolution| {

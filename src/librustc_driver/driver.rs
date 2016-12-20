@@ -543,7 +543,7 @@ pub struct ExpansionResult {
     pub analysis: ty::CrateAnalysis<'static>,
     pub resolutions: Resolutions,
     pub hir_forest: hir_map::Forest,
-    pub defined_as_main: Option<DefId>,
+    pub defined_as_main: Vec<DefId>,
 }
 
 /// Run the "early phases" of the compiler: initial `cfg` processing,
@@ -818,7 +818,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                resolutions: Resolutions,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
-                                               defined_as_main: Option<DefId>,
+                                               defined_as_main: Vec<DefId>,
                                                f: F)
                                                -> Result<R, usize>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
@@ -852,7 +852,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &hir_map, defined_as_main));
+         || middle::entry::find_entry_point(sess, &hir_map, defined_as_main.clone()));
 
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
